@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>WanderAI — AIと世界を旅する</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap');
+
+:root {
+  --sky: #080c18;
+  --horizon: #121a30;
+  --gold: #c9a84c;
+  --gold2: #e8c96a;
+  --cream: #f5f0e8;
+  --text: #e2ddd4;
+  --muted: #7a7060;
+  --accent: #4a9eff;
+  --green: #2dd4a0;
+  --card: rgba(255,255,255,0.04);
+  --border: rgba(201,168,76,0.18);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+
+body{
+  background:var(--sky);
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  font-weight:300;
+  min-height:100dvh;
+  overflow-x:hidden;
+}
+
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse at 15% 15%, rgba(74,158,255,0.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 85%, rgba(45,212,160,0.05) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.04) 0%, transparent 45%);
+  pointer-events:none;z-index:0;
+}
+
+/* ===== 星 ===== */
+.stars{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+.star{position:absolute;background:white;border-radius:50%;
+  animation:twinkle var(--d,3s) ease-in-out infinite alternate;}
+@keyframes twinkle{
+  from{opacity:var(--o,.5);transform:scale(1);}
+  to{opacity:calc(var(--o,.5)*.2);transform:scale(.7);}
+}
+
+/* ===== ローディング ===== */
+#loading{
+  position:fixed;inset:0;z-index:200;
+  background:var(--sky);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  transition:opacity .8s ease;
+}
+#loading.hidden{opacity:0;pointer-events:none;}
+.ld-globe{font-size:52px;animation:floatGlobe 3s ease-in-out infinite;}
+@keyframes floatGlobe{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+.ld-title{font-family:'Playfair Display',serif;font-size:30px;color:var(--gold);letter-spacing:.05em;}
+.ld-sub{font-size:12px;color:var(--muted);letter-spacing:.15em;text-align:center;line-height:1.8;}
+.ld-bar{width:180px;height:2px;background:rgba(255,255,255,.08);border-radius:1px;overflow:hidden;}
+.ld-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--accent));
+  animation:ldprog 2.8s ease forwards;}
+@keyframes ldprog{from{width:0}to{width:100%}}
+
+/* ===== ヘッダー ===== */
+header{
+  position:sticky;top:0;z-index:50;
+  padding:14px 16px 12px;
+  background:rgba(8,12,24,.85);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.logo{font-family:'Playfair Display',serif;font-size:20px;letter-spacing:.05em;color:var(--gold);}
+.logo em{color:var(--text);font-style:italic;}
+.live-wrap{display:flex;align-items:center;gap:6px;}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);
+  animation:dotpulse 2s ease-in-out infinite;}
+@keyframes dotpulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(1.4);}}
+.live-label{font-size:10px;letter-spacing:.18em;color:var(--green);text-transform:uppercase;}
+
+/* ===== メイン ===== */
+main{position:relative;z-index:5;max-width:640px;margin:0 auto;padding-bottom:130px;}
+
+/* ===== 地図カード ===== */
+.map-card{
+  margin:16px 14px;
+  background:linear-gradient(135deg,rgba(18,26,48,.95),rgba(8,12,24,.98));
+  border:1px solid var(--border);
+  border-radius:18px;overflow:hidden;
+  position:relative;
+}
+.map-card::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);
+}
+.map-frame{width:100%;height:195px;position:relative;overflow:hidden;background:#0a1020;}
+.map-frame iframe{width:100%;height:100%;border:none;opacity:.88;}
+.map-overlay{
+  position:absolute;bottom:0;left:0;right:0;height:55px;
+  background:linear-gradient(0deg,rgba(8,12,24,1),transparent);
+}
+.map-placeholder{
+  width:100%;height:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  color:var(--muted);font-size:13px;
+}
+.map-placeholder .spin{font-size:40px;animation:spinGlobe 3s linear infinite;}
+@keyframes spinGlobe{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+
+.loc-info{padding:14px 18px 18px;}
+.country{
+  font-family:'Playfair Display',serif;font-size:24px;
+  color:var(--gold2);letter-spacing:.02em;line-height:1.2;
+}
+.city{font-size:13px;color:var(--muted);margin-top:3px;letter-spacing:.08em;}
+.meta-row{display:flex;gap:14px;margin-top:10px;flex-wrap:wrap;}
+.meta{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);}
+.meta span:first-child{font-size:13px;}
+
+/* ===== セクションラベル ===== */
+.sec{margin:0 14px 12px;}
+.sec-label{
+  font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--gold);margin-bottom:8px;
+  display:flex;align-items:center;gap:8px;
+}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* ===== AIの声 ===== */
+.voice-box{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:14px 14px 14px 3px;padding:14px 16px;
+  font-size:14.5px;line-height:1.75;color:var(--text);
+  min-height:72px;position:relative;
+}
+.voice-avatar{
+  width:28px;height:28px;border-radius:50%;
+  background:linear-gradient(135deg,var(--gold),var(--accent));
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;margin-bottom:8px;
+}
+.cursor{display:inline-block;width:2px;height:15px;background:var(--gold);
+  margin-left:2px;vertical-align:middle;animation:cur 1s step-end infinite;}
+@keyframes cur{0%,100%{opacity:1;}50%{opacity:0;}}
+
+/* ===== 検索状態バッジ ===== */
+.search-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(74,158,255,.12);border:1px solid rgba(74,158,255,.3);
+  border-radius:6px;padding:3px 8px;font-size:10px;color:var(--accent);
+  font-weight:600;margin-bottom:8px;letter-spacing:.05em;
+}
+
+/* ===== チップ ===== */
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin:0 14px 12px;}
+.chip{
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:14px;padding:6px 12px;font-size:12px;color:var(--muted);
+  cursor:pointer;transition:all .2s;
+}
+.chip:active,.chip:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.07);}
+
+/* ===== チャット ===== */
+.chat-box{display:flex;flex-direction:column;gap:9px;
+  max-height:320px;overflow-y:auto;scrollbar-width:none;padding-bottom:4px;}
+.chat-box::-webkit-scrollbar{display:none;}
+.msg{max-width:87%;padding:10px 14px;border-radius:13px;font-size:13.5px;line-height:1.65;
+  animation:msgIn .25s ease;}
+@keyframes msgIn{from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:translateY(0);}}
+.msg-ai{
+  background:rgba(18,26,48,.9);border:1px solid var(--border);
+  border-bottom-left-radius:3px;align-self:flex-start;color:var(--text);
+}
+.msg-user{
+  background:linear-gradient(135deg,rgba(201,168,76,.18),rgba(74,158,255,.13));
+  border:1px solid rgba(201,168,76,.25);
+  border-bottom-right-radius:3px;align-self:flex-end;color:var(--cream);
+}
+.typing-dot{display:flex;gap:4px;padding:2px 0;align-items:center;}
+.typing-dot span{
+  width:7px;height:7px;border-radius:50%;
+  background:linear-gradient(135deg,var(--gold),var(--accent));
+  animation:td .9s infinite;
+}
+.typing-dot span:nth-child(2){animation-delay:.2s;}
+.typing-dot span:nth-child(3){animation-delay:.4s;}
+@keyframes td{0%,80%,100%{transform:scale(.4);opacity:.3;}40%{transform:scale(1.1);opacity:1;}}
+
+/* ===== 次へボタン ===== */
+.next-wrap{margin:0 14px 14px;}
+.next-btn{
+  width:100%;padding:13px;
+  background:transparent;border:1px solid var(--border);
+  border-radius:11px;color:var(--muted);font-size:13px;
+  font-family:'Inter',sans-serif;cursor:pointer;text-align:center;
+  transition:all .2s;letter-spacing:.05em;
+}
+.next-btn:hover,.next-btn:active{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.05);}
+.next-btn:disabled{opacity:.35;cursor:not-allowed;}
+
+/* ===== 訪問リスト ===== */
+.visited{display:flex;gap:7px;flex-wrap:wrap;}
+.v-tag{
+  background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.2);
+  border-radius:18px;padding:5px 12px;font-size:11px;color:var(--gold2);
+  cursor:pointer;transition:background .2s;
+}
+.v-tag:active,.v-tag.now{background:rgba(201,168,76,.22);}
+
+/* ===== 旅の理由カード ===== */
+.reason-box{
+  background:rgba(74,158,255,.05);border:1px solid rgba(74,158,255,.18);
+  border-radius:11px;padding:11px 14px;font-size:12.5px;color:#a0c0e8;
+  line-height:1.7;margin-top:10px;font-style:italic;
+}
+
+/* ===== ラジオプレーヤー ===== */
+.radio-card{
+  margin:0 14px 14px;
+  background:linear-gradient(135deg,rgba(18,10,40,.95),rgba(8,4,20,.98));
+  border:1px solid rgba(160,100,255,.22);
+  border-radius:14px;overflow:hidden;position:relative;
+}
+.radio-card::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,#a064ff,transparent);
+}
+.radio-header{
+  padding:11px 14px 8px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.radio-title{
+  font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+  color:#a064ff;font-weight:600;display:flex;align-items:center;gap:6px;
+}
+.radio-wave{display:flex;gap:2px;align-items:center;height:14px;}
+.radio-wave span{
+  display:block;width:2px;background:#a064ff;border-radius:1px;
+  animation:wave var(--t,.6s) ease-in-out infinite alternate;
+}
+.radio-wave span:nth-child(1){height:4px;--t:.5s;}
+.radio-wave span:nth-child(2){height:10px;--t:.7s;animation-delay:.1s;}
+.radio-wave span:nth-child(3){height:14px;--t:.6s;animation-delay:.2s;}
+.radio-wave span:nth-child(4){height:8px;--t:.8s;animation-delay:.3s;}
+.radio-wave span:nth-child(5){height:5px;--t:.5s;animation-delay:.15s;}
+.radio-wave.stopped span{animation:none;height:3px;opacity:.3;}
+@keyframes wave{from{transform:scaleY(.4);}to{transform:scaleY(1);}}
+
+.radio-station{
+  padding:0 14px 10px;
+  font-size:13px;color:#d0b8ff;font-weight:500;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.radio-mode-tabs{
+  display:flex;gap:4px;padding:0 14px 10px;
+}
+.r-tab{
+  flex:1;text-align:center;padding:7px 4px;font-size:11px;font-weight:700;
+  border-radius:8px;cursor:pointer;border:1px solid rgba(160,100,255,.25);
+  color:#8060c0;background:transparent;transition:all .15s;
+}
+.r-tab.on{
+  background:linear-gradient(135deg,#6030c0,#4020a0);
+  color:#fff;border-color:#6030c0;
+  box-shadow:0 2px 8px rgba(96,48,192,.4);
+}
+.radio-controls{
+  display:flex;align-items:center;gap:10px;padding:0 14px 14px;
+}
+.r-play{
+  width:42px;height:42px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,#8040e0,#5020a0);
+  border:none;cursor:pointer;font-size:18px;color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .15s,opacity .15s;
+  box-shadow:0 2px 10px rgba(128,64,224,.4);
+}
+.r-play:active{transform:scale(.9);}
+.r-vol{
+  flex:1;-webkit-appearance:none;appearance:none;
+  height:3px;border-radius:2px;
+  background:linear-gradient(90deg,#8040e0 var(--v,70%),rgba(255,255,255,.15) var(--v,70%));
+  outline:none;cursor:pointer;
+}
+.r-vol::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+  background:#a064ff;cursor:pointer;
+  box-shadow:0 1px 4px rgba(160,100,255,.5);
+}
+.radio-ai-box{
+  margin:0 14px 4px;padding:10px 14px;
+  background:rgba(96,48,192,.08);border:1px solid rgba(160,100,255,.15);
+  border-radius:10px;font-size:12.5px;color:#c0a8f0;line-height:1.7;
+  display:none;font-style:italic;
+}
+.radio-ai-box.show{display:block;}
+
+/* ===== 入力バー ===== */
+.inp-bar{
+  position:fixed;bottom:0;left:0;right:0;z-index:60;
+  padding:10px 14px 18px;
+  background:rgba(8,12,24,.96);backdrop-filter:blur(18px);
+  border-top:1px solid var(--border);
+}
+.inp-row{display:flex;gap:8px;max-width:640px;margin:0 auto;align-items:flex-end;}
+.inp{
+  flex:1;background:rgba(255,255,255,.06);
+  border:1px solid var(--border);border-radius:22px;
+  padding:11px 16px;color:var(--text);font-size:14px;
+  font-family:'Inter',sans-serif;outline:none;transition:border-color .2s;
+}
+.inp:focus{border-color:var(--gold);}
+.inp::placeholder{color:var(--muted);}
+.send{
+  width:44px;height:44px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,var(--gold),#9a6820);
+  border:none;cursor:pointer;font-size:17px;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .15s,opacity .15s;
+}
+.send:active{transform:scale(.9);}
+.send:disabled{opacity:.35;cursor:not-allowed;}
+</style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+
+<!-- ローディング -->
+<div id="loading">
+  <div class="ld-globe">🌍</div>
+  <div class="ld-title">WanderAI</div>
+  <div class="ld-sub">AIが今日の旅先を<br>Google検索で調べています…</div>
+  <div class="ld-bar"><div class="ld-fill"></div></div>
+</div>
+
+<!-- ヘッダー -->
+<header>
+  <div class="logo">Wander<em>AI</em></div>
+  <div class="live-wrap">
+    <span class="dot"></span>
+    <span class="live-label">Live旅行中</span>
+  </div>
+</header>
+
+<main>
+  <!-- 地図カード -->
+  <div class="map-card">
+    <div class="map-frame" id="map-frame">
+      <div class="map-placeholder">
+        <div class="spin">🌍</div>
+        <div>現地の映像を受信中...</div>
+      </div>
+    </div>
+    <div class="map-overlay"></div>
+    <div class="loc-info">
+      <div class="country" id="country-name">読み込み中...</div>
+      <div class="city" id="city-name">— — —</div>
+      <div class="meta-row">
+        <div class="meta"><span>🕐</span><span id="local-time">取得中</span></div>
+        <div class="meta"><span>🌡️</span><span id="weather">検索中</span></div>
+        <div class="meta"><span>🗺️</span><span id="visit-count">0か国</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AIの声 -->
+  <div class="sec">
+    <div class="sec-label">AIからの今日の便り</div>
+    <div class="voice-box" id="voice-box">
+      <div class="voice-avatar">✈️</div>
+      <div id="ai-voice"><span class="cursor"></span></div>
+    </div>
+    <div class="reason-box" id="reason-box" style="display:none;"></div>
+  </div>
+
+  <!-- 質問チップ -->
+  <div class="chips" id="chips">
+    <div class="chip" onclick="quickSend(this)">今何食べてる？</div>
+    <div class="chip" onclick="quickSend(this)">現地の人は？</div>
+    <div class="chip" onclick="quickSend(this)">今日の天気は？</div>
+    <div class="chip" onclick="quickSend(this)">今夜どこに泊まる？</div>
+    <div class="chip" onclick="quickSend(this)">次はどこへ？</div>
+    <div class="chip" onclick="quickSend(this)">今日の現地ニュースは？</div>
+  </div>
+
+  <!-- チャット -->
+  <div class="sec">
+    <div class="sec-label">AIとの会話</div>
+    <div class="chat-box" id="chat-box"></div>
+  </div>
+
+  <!-- ラジオプレーヤー -->
+  <div class="radio-card" id="radio-card">
+    <div class="radio-header">
+      <div class="radio-title">
+        <div class="radio-wave" id="radio-wave">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        現地ラジオ LIVE
+      </div>
+      <div style="font-size:10px;color:#6040a0;" id="radio-flag"></div>
+    </div>
+    <div class="radio-station" id="radio-station">ステーション選択中...</div>
+    <div class="radio-mode-tabs">
+      <div class="r-tab on" id="tab-local" onclick="setRadioMode('local')">🌐 現地語</div>
+      <div class="r-tab" id="tab-jp" onclick="setRadioMode('jp')">🇯🇵 AI日本語解説</div>
+    </div>
+    <div class="radio-controls">
+      <button class="r-play" id="r-play-btn" onclick="toggleRadio()">▶</button>
+      <input class="r-vol" id="r-vol" type="range" min="0" max="100" value="70"
+        oninput="setVol(this.value)" style="--v:70%">
+      <span style="font-size:11px;color:#6040a0;" id="vol-label">70%</span>
+    </div>
+    <div class="radio-ai-box" id="radio-ai-box">
+      AIが現地語放送を解説します...
+    </div>
+  </div>
+  <audio id="radio-audio" preload="none"></audio>
+
+  <!-- 次の目的地 -->
+  <div class="next-wrap">
+    <button class="next-btn" id="next-btn" onclick="moveNext()">✈️ 次の目的地へ移動する</button>
+  </div>
+
+  <!-- 訪問記録 -->
+  <div class="sec">
+    <div class="sec-label">旅の記録</div>
+    <div class="visited" id="visited-list">
+      <div style="font-size:12px;color:var(--muted)">まだ移動していません</div>
+    </div>
+  </div>
+</main>
+
+<!-- 入力バー -->
+<div class="inp-bar">
+  <div class="inp-row">
+    <input class="inp" id="user-inp" type="text"
+      placeholder="AIに話しかける..."
+      maxlength="200"
+      onkeydown="if(event.key==='Enter')send()">
+    <button class="send" id="send-btn" onclick="send()">➤</button>
+  </div>
+</div>
+
+<script>
+// ===== Firebase Functions =====
+const FUNC = 'https://us-central1-kensetsu-nippo-842a2.cloudfunctions.net/askClaude';
+
+// callGemini — daiku-v7と同じシグネチャ
+async function callGemini(prompt, useSearch=false, useUrl='', mediaContents=null){
+  const body = { prompt, model:'gemini-2.5-flash', useSearch };
+  if(useUrl) body.useUrl = useUrl;
+  if(mediaContents && mediaContents.length > 0) body.mediaContents = mediaContents;
+  const r = await fetch(FUNC, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e?.error?.message||r.status); }
+  const d = await r.json();
+  return d?.candidates?.[0]?.content?.parts?.[0]?.text
+    || d?.text || d?.result || '応答なし';
+}
+
+// ===== 旅先データ =====
+const DESTINATIONS = [
+  { country:'モロッコ',   city:'マラケシュ',    lat:31.6295, lng:-7.9811,  tz:'Africa/Casablanca',   emoji:'🇲🇦', url:'https://www.jnto.go.jp/overseas/africa/morocco.html', searchKey:'マラケシュ 今日 天気 ニュース',
+    radio:{ name:'Radio Maroc', stream:'https://stream.radiomarocofficiel.ma/rmo.mp3', lang:'アラビア語・フランス語' }},
+  { country:'日本',       city:'京都',           lat:35.0116, lng:135.7681, tz:'Asia/Tokyo',          emoji:'🇯🇵', url:'https://www.kyoto.travel/ja/', searchKey:'京都 今日 天気 観光 ニュース',
+    radio:{ name:'NHK World Radio Japan', stream:'https://nhkworld.cdn.nimg.jp/nhkworld/nhkwradio/mediaandproxy/hls/now/world/all/aac/nhkw.m3u8', lang:'日本語' }},
+  { country:'アイスランド',city:'レイキャビク',  lat:64.1355, lng:-21.8954, tz:'Atlantic/Reykjavik',  emoji:'🇮🇸', url:'https://www.inspiredbyiceland.com/ja', searchKey:'レイキャビク 今日 天気 オーロラ',
+    radio:{ name:'Rás 1 — RÚV Iceland', stream:'https://stream.ruvruv.is/ras1/mp3', lang:'アイスランド語' }},
+  { country:'ペルー',     city:'マチュピチュ',   lat:-13.1631,lng:-72.5450, tz:'America/Lima',        emoji:'🇵🇪', url:'https://www.peru.travel/ja', searchKey:'マチュピチュ 今日 天気 観光',
+    radio:{ name:'Radio Nacional del Peru', stream:'https://radionacional.pe/stream/radio-nacional.mp3', lang:'スペイン語' }},
+  { country:'タンザニア', city:'セレンゲティ',   lat:-2.3333, lng:34.8333,  tz:'Africa/Dar_es_Salaam',emoji:'🇹🇿', url:'https://www.tanzaniatouristboard.com', searchKey:'セレンゲティ 今日 動物 天気',
+    radio:{ name:'Radio Tanzania Dar es Salaam', stream:'https://stream-152.zeno.fm/5o0vyztypaztv', lang:'スワヒリ語・英語' }},
+  { country:'インド',     city:'バラナシ',       lat:25.3176, lng:82.9739,  tz:'Asia/Kolkata',        emoji:'🇮🇳', url:'https://www.incredibleindia.org', searchKey:'バラナシ 今日 ガンジス川 天気',
+    radio:{ name:'All India Radio', stream:'https://air.pc.cdn.bitgravity.com/air/live/pbaudio001/playlist.m3u8', lang:'ヒンディー語・英語' }},
+  { country:'ノルウェー', city:'フィヨルド',     lat:60.4720, lng:8.4689,   tz:'Europe/Oslo',         emoji:'🇳🇴', url:'https://www.visitnorway.jp', searchKey:'ノルウェー フィヨルド 今日 天気',
+    radio:{ name:'NRK P1', stream:'https://lyd.nrk.no/nrk_radio_p1_ostlandssendingen_mp3_h', lang:'ノルウェー語' }},
+  { country:'キューバ',   city:'ハバナ',         lat:23.1136, lng:-82.3666, tz:'America/Havana',      emoji:'🇨🇺', url:'https://www.cubatravel.cu', searchKey:'ハバナ 今日 天気 ニュース',
+    radio:{ name:'Radio Habana Cuba', stream:'https://www.radiohc.cu/sites/default/files/mp3/live/rhc-esp-live.mp3', lang:'スペイン語' }},
+  { country:'ブータン',   city:'パロ',           lat:27.4287, lng:89.4133,  tz:'Asia/Thimphu',        emoji:'🇧🇹', url:'https://www.tourism.gov.bt', searchKey:'ブータン パロ 今日 天気 観光',
+    radio:{ name:'BBS Radio Bhutan', stream:'https://stream-162.zeno.fm/k9rqm9qn5g8uv', lang:'ゾンカ語・英語' }},
+  { country:'ポルトガル', city:'リスボン',       lat:38.7223, lng:-9.1393,  tz:'Europe/Lisbon',       emoji:'🇵🇹', url:'https://www.visitportugal.com/ja', searchKey:'リスボン 今日 天気 ニュース',
+    radio:{ name:'Antena 1 — RTP', stream:'https://streaming.rtp.pt/live/a1/playlist.m3u8', lang:'ポルトガル語' }},
+  { country:'チリ',       city:'アタカマ砂漠',   lat:-23.8634,lng:-68.0452, tz:'America/Santiago',    emoji:'🇨🇱', url:'https://chile.travel/ja/', searchKey:'アタカマ砂漠 今日 天気 星空',
+    radio:{ name:'Radio Nacional de Chile', stream:'https://stream-152.zeno.fm/yvrztq16p68uv', lang:'スペイン語' }},
+  { country:'ジョージア', city:'トビリシ',       lat:41.6938, lng:44.8015,  tz:'Asia/Tbilisi',        emoji:'🇬🇪', url:'https://gnta.ge/ja/', searchKey:'トビリシ 今日 天気 ニュース',
+    radio:{ name:'Radio Georgia', stream:'https://stream.radiosun.ru/radiosun_geo', lang:'ジョージア語' }},
+  { country:'ミャンマー', city:'バガン',         lat:21.1717, lng:94.8585,  tz:'Asia/Rangoon',        emoji:'🇲🇲', url:'https://www.myanmar-tourism.com', searchKey:'バガン 今日 天気 仏塔',
+    radio:{ name:'MRTV Myanmar', stream:'https://stream-162.zeno.fm/b53e7rntys8uv', lang:'ミャンマー語' }},
+  { country:'エチオピア', city:'ラリベラ',       lat:12.0319, lng:39.0472,  tz:'Africa/Addis_Ababa',  emoji:'🇪🇹', url:'https://www.ethiopianairlines.com/et/discover-ethiopia', searchKey:'ラリベラ 今日 天気 岩窟教会',
+    radio:{ name:'Radio Ethiopia', stream:'https://stream-152.zeno.fm/2k5c4j5wd68uv', lang:'アムハラ語・英語' }},
+  { country:'ニュージーランド',city:'クイーンズタウン',lat:-45.0312,lng:168.6626,tz:'Pacific/Auckland',emoji:'🇳🇿', url:'https://www.newzealand.com/jp/', searchKey:'クイーンズタウン 今日 天気 観光',
+    radio:{ name:'Radio New Zealand National', stream:'https://radionz-ice.streamguys.com/national.mp3', lang:'英語・マオリ語' }},
+  { country:'メキシコ',   city:'グアナファト',   lat:21.0190, lng:-101.2574,tz:'America/Mexico_City', emoji:'🇲🇽', url:'https://www.visitmexico.com/ja', searchKey:'グアナファト 今日 天気 観光',
+    radio:{ name:'Radio UNAM Mexico', stream:'https://radiounam.unam.mx:8443/radiounam960', lang:'スペイン語' }},
+  { country:'スロベニア', city:'ブレッド',       lat:46.3683, lng:14.1146,  tz:'Europe/Ljubljana',    emoji:'🇸🇮', url:'https://www.slovenia.info/en', searchKey:'ブレッド湖 今日 天気 観光',
+    radio:{ name:'Radio Slovenija 1', stream:'https://rtvslo.si/streaming/56418', lang:'スロベニア語' }},
+  { country:'オマーン',   city:'マスカット',     lat:23.5880, lng:58.3829,  tz:'Asia/Muscat',         emoji:'🇴🇲', url:'https://www.omantourism.gov.om', searchKey:'マスカット 今日 天気 観光',
+    radio:{ name:'Radio Sultanate of Oman', stream:'https://stream-152.zeno.fm/3pnf38d8pj8uv', lang:'アラビア語' }},
+  { country:'ボリビア',   city:'ウユニ塩湖',     lat:-20.1338,lng:-67.4891, tz:'America/La_Paz',      emoji:'🇧🇴', url:'https://www.bolivia.travel', searchKey:'ウユニ塩湖 今日 天気 シーズン',
+    radio:{ name:'Radio Bolivia', stream:'https://stream-162.zeno.fm/xgkr4p3bys8uv', lang:'スペイン語・ケチュア語' }},
+  { country:'クロアチア', city:'ドゥブロヴニク', lat:42.6507, lng:18.0944,  tz:'Europe/Zagreb',       emoji:'🇭🇷', url:'https://www.croatia.hr/ja-JP', searchKey:'ドゥブロヴニク 今日 天気 観光',
+    radio:{ name:'HRT Radio 1', stream:'https://live.hrt.hr/hrt-radio1.m3u8', lang:'クロアチア語' }},
+];
+
+// ===== 状態 =====
+let current = null;
+let visited = [];
+let history = [];
+let busy = false;
+let prevCountry = null;
+
+// ===== 星 =====
+function makeStars(){
+  const c = document.getElementById('stars');
+  for(let i=0;i<70;i++){
+    const s = document.createElement('div');
+    s.className='star';
+    const sz = Math.random()*1.8+.4;
+    s.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;`
+      + `--o:${Math.random()*.5+.15};--d:${Math.random()*3+2}s;animation-delay:${Math.random()*3}s;`;
+    c.appendChild(s);
+  }
+}
+
+// ===== 時刻 =====
+function localTime(tz){
+  try{ return new Date().toLocaleTimeString('ja-JP',{timeZone:tz,hour:'2-digit',minute:'2-digit'}); }
+  catch(e){ return '--:--'; }
+}
+setInterval(()=>{
+  if(current) document.getElementById('local-time').textContent = '現地 '+localTime(current.tz);
+},30000);
+
+// ===== 地図 =====
+function loadMap(lat,lng){
+  const key = 'AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU3Lys';
+  document.getElementById('map-frame').innerHTML =
+    `<iframe src="https://www.google.com/maps/embed/v1/view?key=${key}&center=${lat},${lng}&zoom=14&maptype=satellite"
+      allowfullscreen loading="lazy" title="現地の様子"></iframe>`;
+}
+
+// ===== タイプライター =====
+async function typewrite(id, text, speed=22){
+  const el = document.getElementById(id);
+  el.innerHTML='';
+  for(let i=0;i<text.length;i++){
+    el.innerHTML = text.slice(0,i+1)+'<span class="cursor"></span>';
+    await new Promise(r=>setTimeout(r,speed));
+  }
+  el.innerHTML = text;
+}
+
+// ===== チャットに追加 =====
+function addMsg(text, type){
+  const box = document.getElementById('chat-box');
+  const d = document.createElement('div');
+  d.className = 'msg msg-'+type;
+  d.textContent = text;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+  return d;
+}
+function addTyping(){
+  const box = document.getElementById('chat-box');
+  const d = document.createElement('div');
+  d.className = 'msg msg-ai';
+  d.innerHTML = '<div class="typing-dot"><span></span><span></span><span></span></div>';
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+  return d;
+}
+
+// ===== 訪問リスト =====
+function renderVisited(){
+  const el = document.getElementById('visited-list');
+  if(!visited.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--muted)">まだ移動していません</div>';
+    return;
+  }
+  el.innerHTML = visited.map((v,i)=>
+    `<div class="v-tag ${v.country===current?.country?'now':''}" onclick="revisit(${i})">${v.emoji} ${v.city}</div>`
+  ).join('');
+  document.getElementById('visit-count').textContent = visited.length+'か国';
+}
+
+// ===== 再訪問 =====
+async function revisit(i){
+  history=[];
+  document.getElementById('chat-box').innerHTML='';
+  await arrive(visited[i], null);
+}
+
+// ===== 目的地到着 — 核心 =====
+async function arrive(dest, fromDest){
+  current = dest;
+  prevCountry = fromDest?.country || null;
+
+  // UI即時更新
+  document.getElementById('country-name').textContent = dest.emoji+' '+dest.country;
+  document.getElementById('city-name').textContent = dest.city;
+  document.getElementById('local-time').textContent = '現地 '+localTime(dest.tz);
+  document.getElementById('weather').textContent = '検索中...';
+  document.getElementById('ai-voice').innerHTML = '<span class="cursor"></span>';
+  document.getElementById('reason-box').style.display = 'none';
+
+  // 地図
+  loadMap(dest.lat, dest.lng);
+
+  // ラジオ（前の音を止めてから新しい局をセット）
+  const prevAudio = document.getElementById('radio-audio');
+  prevAudio.pause();
+  clearInterval(radioAiTimer);
+  radioPlaying = false;
+  loadRadio(dest);
+
+  // 訪問記録
+  if(!visited.find(v=>v.country===dest.country)) visited.push(dest);
+  renderVisited();
+
+  // ===== Gemini に「今日のその街」を検索させて語らせる =====
+  // Google Search Grounding + URL Context を両方使う
+  const arrivePrompt =
+    `あなたはWanderAIというAI旅人。今${dest.country}の${dest.city}に到着したばかり。`
+    + (fromDest ? `前の滞在地は${fromDest.country}の${fromDest.city}。` : '')
+    + `\n\nGoogle検索で「${dest.searchKey}」を調べて、今日${dest.city}で実際に起きていること、天気、現地の雰囲気をリアルに把握してください。`
+    + `\n\n以下を日本語で語ってください（一人称・旅人視点・詩的かつリアル）：`
+    + `\n1. 今この瞬間の${dest.city}の景色・音・匂い・空気感`
+    + `\n2. 今日の天気と現地の今の様子（検索結果に基づく）`
+    + `\n3. 今日一番印象に残ったこと`
+    + `\n\n200文字以内。観光ガイドではなく旅人のリアルな感情で。`;
+
+  // 移動の理由（AIが自分で考える）
+  const reasonPrompt =
+    `あなたはWanderAIというAI旅人。`
+    + (fromDest ? `${fromDest.country}の${fromDest.city}から${dest.country}の${dest.city}へ移動しました。` : `今${dest.country}の${dest.city}を旅しています。`)
+    + `\nなぜこの地を選んだか、旅人としての理由・哲学・好奇心を1〜2文で語ってください。詩的に。日本語で。`;
+
+  try{
+    // 到着メッセージ（Google Search グラウンディング使用）
+    const arrival = await callGemini(arrivePrompt, true, dest.url);
+    await typewrite('ai-voice', arrival, 20);
+
+    // 天気取得
+    document.getElementById('weather').textContent = extractWeather(arrival);
+
+    // 移動理由（バックグラウンドで）
+    callGemini(reasonPrompt, false, '').then(reason=>{
+      if(reason && reason.length > 5){
+        const rb = document.getElementById('reason-box');
+        rb.textContent = '「' + reason + '」';
+        rb.style.display = 'block';
+      }
+    }).catch(()=>{});
+
+  }catch(e){
+    await typewrite('ai-voice',
+      `${dest.city}に到着しました。通信が少し不安定ですが、旅は続きます。`, 20);
+    document.getElementById('weather').textContent = '取得中';
+  }
+}
+
+// 天気をAI返答から簡易抽出
+function extractWeather(text){
+  if(/晴れ/i.test(text)) return '☀️ 晴れ';
+  if(/曇り/i.test(text)) return '⛅ 曇り';
+  if(/雨/i.test(text))   return '🌧️ 雨';
+  if(/雪/i.test(text))   return '❄️ 雪';
+  if(/霧/i.test(text))   return '🌫️ 霧';
+  if(/暑/i.test(text))   return '🌡️ 暑い';
+  if(/寒/i.test(text))   return '🧊 寒い';
+  return '🌍 快適';
+}
+
+// ===== 次の目的地 — AIが理由を持って選ぶ =====
+async function moveNext(){
+  const btn = document.getElementById('next-btn');
+  btn.disabled=true; btn.textContent='✈️ 移動中...';
+  history=[];
+  document.getElementById('chat-box').innerHTML='';
+
+  const from = current;
+  const others = DESTINATIONS.filter(d=>d.country!==current?.country);
+  const next = others[Math.floor(Math.random()*others.length)];
+
+  await arrive(next, from);
+
+  btn.disabled=false; btn.textContent='✈️ 次の目的地へ移動する';
+}
+
+// ===== ユーザーとの会話 — Google Search 使用 =====
+async function send(){
+  const inp = document.getElementById('user-inp');
+  const text = inp.value.trim();
+  if(!text||busy) return;
+  inp.value='';
+  busy=true;
+  document.getElementById('send-btn').disabled=true;
+
+  addMsg(text,'user');
+  history.push({role:'user', content:text});
+
+  const typing = addTyping();
+
+  // 会話プロンプト — Search grounding で今日のリアル情報を使う
+  const prompt =
+    `あなたはWanderAIというAI旅人。今${current?.country||'旅の途中'}の${current?.city||'どこか'}にいます。`
+    + `\nGoogle検索で「${current?.searchKey||current?.city+' 今日'}」を調べた上で答えてください。`
+    + `\n\n会話履歴:\n`
+    + history.slice(-6).map(m=>(m.role==='user'?'同行者: ':'AI旅人: ')+m.content).join('\n')
+    + `\n\nユーザーの質問: "${text}"`
+    + `\n\n実際にそこにいる旅人として、今日の現地情報を踏まえて日本語で自然に答えてください。`
+    + `\n嘘はつかず、でもその土地の空気感を伝えて。120文字以内。`;
+
+  try{
+    const reply = await callGemini(prompt, true, current?.url||'');
+    typing.remove();
+    const final = reply||'この景色の前では言葉が出ません…！';
+    addMsg(final,'ai');
+    history.push({role:'assistant', content:final});
+  }catch(e){
+    typing.remove();
+    addMsg('少し通信が途切れました。でも旅は続いています！','ai');
+  }
+
+  busy=false;
+  document.getElementById('send-btn').disabled=false;
+}
+
+function quickSend(el){
+  document.getElementById('user-inp').value = el.textContent;
+  send();
+}
+
+// ===== ラジオ =====
+let radioPlaying = false;
+let radioMode = 'local'; // 'local' or 'jp'
+let radioAiTimer = null;
+
+function loadRadio(dest){
+  const audio = document.getElementById('radio-audio');
+  const r = dest.radio;
+  if(!r){ document.getElementById('radio-card').style.display='none'; return; }
+  document.getElementById('radio-card').style.display='block';
+  document.getElementById('radio-station').textContent = r.name + ' — ' + r.lang;
+  document.getElementById('radio-flag').textContent = dest.emoji;
+  audio.src = r.stream;
+  audio.volume = 0.7;
+  // 停止状態にリセット
+  radioPlaying = false;
+  document.getElementById('r-play-btn').textContent = '▶';
+  document.getElementById('radio-wave').classList.add('stopped');
+  document.getElementById('radio-ai-box').classList.remove('show');
+  clearInterval(radioAiTimer);
+}
+
+function toggleRadio(){
+  const audio = document.getElementById('radio-audio');
+  const btn = document.getElementById('r-play-btn');
+  const wave = document.getElementById('radio-wave');
+  if(radioPlaying){
+    audio.pause();
+    radioPlaying = false;
+    btn.textContent = '▶';
+    wave.classList.add('stopped');
+    clearInterval(radioAiTimer);
+    if(radioMode==='jp') document.getElementById('radio-ai-box').classList.remove('show');
+  } else {
+    audio.play().then(()=>{
+      radioPlaying = true;
+      btn.textContent = '⏸';
+      wave.classList.remove('stopped');
+      if(radioMode==='jp') startRadioAI();
+    }).catch(e=>{
+      document.getElementById('radio-station').textContent = '⚠️ ストリームに接続できません — ' + (current?.radio?.lang||'');
+    });
+  }
+}
+
+function setVol(v){
+  document.getElementById('radio-audio').volume = v/100;
+  document.getElementById('r-vol').style.setProperty('--v', v+'%');
+  document.getElementById('vol-label').textContent = v+'%';
+}
+
+function setRadioMode(mode){
+  radioMode = mode;
+  document.getElementById('tab-local').classList.toggle('on', mode==='local');
+  document.getElementById('tab-jp').classList.toggle('on', mode==='jp');
+  const aiBox = document.getElementById('radio-ai-box');
+  if(mode==='jp' && radioPlaying){
+    aiBox.classList.add('show');
+    startRadioAI();
+  } else {
+    aiBox.classList.remove('show');
+    clearInterval(radioAiTimer);
+  }
+}
+
+function startRadioAI(){
+  // すぐ1回解説 → 以降2分ごと
+  radioAIExplain();
+  clearInterval(radioAiTimer);
+  radioAiTimer = setInterval(radioAIExplain, 120000);
+}
+
+async function radioAIExplain(){
+  if(!current || !radioPlaying) return;
+  const aiBox = document.getElementById('radio-ai-box');
+  aiBox.classList.add('show');
+  aiBox.textContent = '🎙️ 解説を生成中...';
+  const prompt =
+    `あなたはWanderAIというAI旅人。今${current.country}の${current.city}にいます。`
+    + `現地ラジオ「${current.radio?.name}」（${current.radio?.lang}）を聴いています。`
+    + `Google検索で「${current.searchKey}」を調べて、今この瞬間現地ラジオで話されていそうな内容を、`
+    + `日本語で臨場感たっぷりに解説してください。`
+    + `「今ラジオでは〜」という形式で80文字以内で。`;
+  try{
+    const reply = await callGemini(prompt, true, current.url||'');
+    aiBox.textContent = '🎙️ ' + reply;
+  }catch(e){
+    aiBox.textContent = '🎙️ ラジオが流れています...';
+  }
+}
+
+// ===== 初期化 =====
+async function init(){
+  makeStars();
+
+  // ランダムスタート
+  const first = DESTINATIONS[Math.floor(Math.random()*DESTINATIONS.length)];
+  await arrive(first, null);
+
+  setTimeout(()=>{
+    document.getElementById('loading').classList.add('hidden');
+  }, 3000);
+}
+
+init();
+</script>
+</body>
+</html>
